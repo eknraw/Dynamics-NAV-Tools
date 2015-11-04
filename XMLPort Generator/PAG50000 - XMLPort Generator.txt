@@ -1,0 +1,512 @@
+
+OBJECT Page 50000 XMLPort Generator
+{
+  OBJECT-PROPERTIES
+  {
+    Date=03/11/15;
+    Time=11:34:23 PM;
+    Modified=Yes;
+    Version List=AP7.10.001;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table2000000041;
+    PageType=List;
+    OnOpenPage=BEGIN
+                 FieldSeparator := '<TAB>';
+                 FieldDelimeter := '<None>';
+               END;
+
+    ActionList=ACTIONS
+    {
+      { 1240060016;  ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 1240060017;1 ;Action    ;
+                      Name=Generate XMLPorts;
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 GenerateXMLPort;
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1240060000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1240060020;1;Group  ;
+                GroupType=Group }
+
+    { 1240060023;2;Field  ;
+                CaptionML=ENU=Export Path for Objects;
+                SourceExpr=ExportPath;
+                OnLookup=BEGIN
+
+                           ExportPath := FileMgmt.BrowseForFolderDialog('Path For XMLPort Object ObjectFiles...','',TRUE);
+                           ExportPath += '\';
+                         END;
+                          }
+
+    { 1240060024;2;Field  ;
+                CaptionML=ENU=Starting Object ID;
+                SourceExpr=StartingObjectID }
+
+    { 1240060025;2;Field  ;
+                CaptionML=ENU=XMLPort Field/Variable;
+                SourceExpr=XMLPortType }
+
+    { 1240060018;2;Field  ;
+                CaptionML=ENU=Filter on Selected Values;
+                SourceExpr=FilterSelectedValues }
+
+    { 1240060019;2;Field  ;
+                CaptionML=ENU=Split Object Files;
+                SourceExpr=SplitObjectFiles }
+
+    { 1240060021;2;Field  ;
+                CaptionML=ENU=Field Separator;
+                SourceExpr=FieldSeparator }
+
+    { 1240060022;2;Field  ;
+                CaptionML=ENU=Field Delimeter;
+                SourceExpr=FieldDelimeter }
+
+    { 1240060001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1240060002;2;Field  ;
+                SourceExpr=TableNo }
+
+    { 1240060003;2;Field  ;
+                SourceExpr="No." }
+
+    { 1240060004;2;Field  ;
+                SourceExpr=TableName }
+
+    { 1240060005;2;Field  ;
+                SourceExpr=FieldName }
+
+    { 1240060006;2;Field  ;
+                SourceExpr=Type }
+
+    { 1240060007;2;Field  ;
+                SourceExpr=Len }
+
+    { 1240060008;2;Field  ;
+                SourceExpr=Class }
+
+    { 1240060009;2;Field  ;
+                SourceExpr=Enabled }
+
+    { 1240060010;2;Field  ;
+                SourceExpr="Type Name" }
+
+    { 1240060011;2;Field  ;
+                SourceExpr="Field Caption" }
+
+    { 1240060012;2;Field  ;
+                SourceExpr=RelationTableNo }
+
+    { 1240060013;2;Field  ;
+                SourceExpr=RelationFieldNo }
+
+    { 1240060014;2;Field  ;
+                SourceExpr=SQLDataType }
+
+    { 1240060015;2;Field  ;
+                SourceExpr=OptionString }
+
+  }
+  CODE
+  {
+    VAR
+      ExportPath@1240060000 : Text;
+      StartingObjectID@1240060001 : Integer;
+      XMLPortType@1240060002 : 'Field,Text';
+      FilterSelectedValues@1240060003 : Boolean;
+      SplitObjectFiles@1240060004 : Boolean;
+      FileMgmt@1240060005 : Codeunit 419;
+      ObjectFile@1240060007 : File;
+      NSTFileName@1240060006 : Text;
+      ClientFileName@1240060008 : Text;
+      TempClientFileName@1240060009 : Text;
+      FileOpen@1240060010 : Boolean;
+      FieldSeparator@1240060011 : Text[20];
+      FieldDelimeter@1240060012 : Text[20];
+
+    PROCEDURE GenerateXMLPort@1240060000();
+    VAR
+      TempFields@1240060000 : TEMPORARY Record 2000000041;
+      TempFieldTables@1240060001 : TEMPORARY Record 2000000041;
+    BEGIN
+
+      LoadFields(Rec,TempFields,TempFieldTables);
+
+      CLEAR(TempFieldTables);
+
+      IF TempFieldTables.FINDSET THEN BEGIN
+        REPEAT
+
+          IF SplitObjectFiles OR NOT FileOpen THEN
+            StartFile;
+
+          WriteXMLPortObjHeader(StartingObjectID,FORMAT(RemChar(TempFieldTables.TableName) + '_' + FORMAT(StartingObjectID)),TempFieldTables);
+
+          CLEAR(TempFields);
+          TempFields.SETRANGE(TableNo,TempFieldTables.TableNo);
+          IF TempFields.FINDSET THEN BEGIN
+            REPEAT
+              CASE XMLPortType OF
+                XMLPortType::Field : WriteXMLPortObjLineField(TempFields);
+                XMLPortType::Text : WriteXMLPortObjLineText(TempFields);
+              END;
+            UNTIL TempFields.NEXT = 0;
+          END;
+
+          WriteXMLPortObjEnd(TempFieldTables.TableNo,TempFields);
+
+          IF SplitObjectFiles THEN
+            EndFile(ExportPath,'XML' + FORMAT(StartingObjectID) + '.txt');
+
+          StartingObjectID += 1;
+
+
+        UNTIL TempFieldTables.NEXT = 0;
+
+        IF NOT SplitObjectFiles THEN
+          EndFile(ExportPath,'AllObjects.txt');
+
+      END;
+    END;
+
+    PROCEDURE LoadFields@1240060001(VAR pField@1240060000 : Record 2000000041;VAR TempField@1240060001 : TEMPORARY Record 2000000041;VAR TempFieldTables@1240060002 : TEMPORARY Record 2000000041);
+    VAR
+      Field@1240060003 : Record 2000000041;
+    BEGIN
+      Field.COPYFILTERS(pField);
+      IF FilterSelectedValues THEN
+        CurrPage.SETSELECTIONFILTER(Field);
+      IF Field.FINDSET THEN BEGIN
+        REPEAT
+          CLEAR(TempFieldTables);
+          TempFieldTables.SETRANGE(TableNo,Field.TableNo);
+          IF NOT TempFieldTables.FINDFIRST THEN BEGIN
+            TempFieldTables := Field;
+            TempFieldTables.INSERT;
+          END;
+          TempField := Field;
+          TempField.INSERT;
+        UNTIL Field.NEXT = 0;
+      END;
+    END;
+
+    PROCEDURE WriteXMLPortObjHeader@1240060002(XMLPortID@1240060000 : Integer;XMLPortName@1240060001 : Text;VAR Field@1240060002 : Record 2000000041);
+    VAR
+      Key@1240060003 : Record 2000000063;
+      KeyStringArray@1240060004 : ARRAY [1000] OF Text;
+      i@1240060005 : Integer;
+    BEGIN
+      ObjectFile.WRITE('OBJECT XMLport ' + FORMAT(XMLPortID) + ' ' + FORMAT(XMLPortName));
+      ObjectFile.WRITE('{');
+      ObjectFile.WRITE('  OBJECT-PROPERTIES');
+      ObjectFile.WRITE('  {');
+      ObjectFile.WRITE('    Date=' + FORMAT(TODAY,8,1) + ';');
+      ObjectFile.WRITE('    Time=' + FORMAT(TIME) + ';');
+      ObjectFile.WRITE('    Modified=Yes;');
+      ObjectFile.WRITE('    Version List=AP XMLPort Generator;');
+      ObjectFile.WRITE('  }');
+      ObjectFile.WRITE('  PROPERTIES');
+      ObjectFile.WRITE('  {');
+      ObjectFile.WRITE('    Format=Variable Text;');
+      ObjectFile.WRITE('    FieldDelimiter=<None>;');
+      ObjectFile.WRITE('    FieldSeparator=' + FieldSeparator + ';');
+      ObjectFile.WRITE('  }');
+      ObjectFile.WRITE('  ELEMENTS');
+      ObjectFile.WRITE('  {');
+      ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];  ;Root                ;Element ;Text     }');
+      ObjectFile.WRITE('');
+
+      IF XMLPortType = XMLPortType::Field THEN BEGIN
+        ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];1 ;' + RemChar(TableName) + '   ;Element ;Table   ;');
+        ObjectFile.WRITE('                                                  SourceTable=Table' + Field.TableName +' }');
+      END;
+
+      IF XMLPortType = XMLPortType::Text THEN BEGIN
+        ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];1 ;Integer    ;Element ;Table   ;');
+        ObjectFile.WRITE('                                                  SourceTable=Table2000000026;');
+        ObjectFile.WRITE('                                                  Import::OnBeforeInsertRecord=BEGIN');
+        ObjectFile.WRITE('');
+        ObjectFile.WRITE('                                                                                 CLEAR(' + RemChar(Field.TableName) + ');');
+        ObjectFile.WRITE('                                                                                 WITH ' + RemChar(Field.TableName) + ' DO BEGIN');
+
+        Key.GET(Field.TableNo,1);
+        BuildArray(Key.Key,KeyStringArray);
+        FOR i := 1 TO STRLEN(FORMAT(Key.Key)) - (STRLEN(DELCHR(FORMAT(Key.Key),'=',',')) - 1) DO BEGIN
+          ObjectFile.WRITE('                                                                                   "' + KeyStringArray[i] + '" := V' + RemChar(KeyStringArray[i]) + ';');
+        END;
+        ObjectFile.WRITE('                                                                                   IF NOT GET THEN BEGIN');
+        ObjectFile.WRITE('                                                                                     INSERT;');
+        ObjectFile.WRITE('                                                                                   END');
+
+      END;
+
+      ObjectFile.WRITE('');
+    END;
+
+    PROCEDURE WriteXMLPortObjLineField@1240060003(Field@1240060000 : Record 2000000041);
+    BEGIN
+      ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];2 ;' + 'V' + RemChar(Field.FieldName) + '       ;Element ;Field   ;');
+      ObjectFile.WRITE('                                                  DataType=' + FORMAT(Field.Type) + ';');
+      ObjectFile.WRITE('                                                  SourceField=' + Field.TableName + '::' + Field.FieldName + '}');
+      ObjectFile.WRITE('');
+    END;
+
+    PROCEDURE WriteXMLPortObjLineText@1240060008(VAR Field@1240060000 : Record 2000000041);
+    VAR
+      OptionStringArray@1240060001 : ARRAY [1000] OF Text;
+      i@1240060002 : Integer;
+    BEGIN
+      IF Field.Class = Field.Class::Normal THEN BEGIN
+              ObjectFile.WRITE('                                                                                   // Field.Type: ' + FORMAT(Field."Type Name"));
+        CASE Field.Type OF
+          Type::Text, Type::Code :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   //"' +  Field.FieldName + '" := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                   VALIDATE("' +  Field.FieldName + '",V' + RemChar(Field.FieldName) + ');');
+              ObjectFile.WRITE('');
+            END;
+          Type::Integer :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   IF EVALUATE(TempInteger,V' + RemChar(Field.FieldName) + ') THEN BEGIN');
+              ObjectFile.WRITE('                                                                                     //TempInteger := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     VALIDATE("' +  Field.FieldName + '",TempInteger);');
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('');
+            END;
+          Type::Decimal :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   IF EVALUATE(TempDecimal,V' + RemChar(Field.FieldName) + ') THEN BEGIN');
+              ObjectFile.WRITE('                                                                                     //TempDecimal := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     //"' +  Field.FieldName + '" := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     VALIDATE("' +  Field.FieldName + '",TempDecimal);');
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('');
+            END;
+          Type::Boolean :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   IF EVALUATE(TempBoolean,V' + RemChar(Field.FieldName) + ') THEN BEGIN');
+              ObjectFile.WRITE('                                                                                     //TempBoolean := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     //"' +  Field.FieldName + '" := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     VALIDATE("' +  Field.FieldName + '",TempBoolean);');
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('');
+            END;
+          Type::Time :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   IF EVALUATE(TempTime,V' + RemChar(Field.FieldName) + ') THEN BEGIN');
+              ObjectFile.WRITE('                                                                                     //TempTime := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     //"' +  Field.FieldName + '" := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     VALIDATE("' +  Field.FieldName + '",TempTime);');
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('');
+            END;
+          Type::DateTime :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   IF EVALUATE(TempDateTime,V' + RemChar(Field.FieldName) + ') THEN BEGIN');
+              ObjectFile.WRITE('                                                                                     //TempDecimal := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     //"' +  Field.FieldName + '" := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     VALIDATE("' +  Field.FieldName + '",TempDateTime);');
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('');
+            END;
+          Type::DateFormula :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   IF EVALUATE(TempDateFormula,V' + RemChar(Field.FieldName) + ') THEN BEGIN');
+              ObjectFile.WRITE('                                                                                     //TempDateformula := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     //"' +  Field.FieldName + '" := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     VALIDATE("' +  Field.FieldName + '",TempDateFormula);');
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('');
+            END;
+          Type::Date :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   IF EVALUATE(TempDate,V' + RemChar(Field.FieldName) + ') THEN BEGIN');
+              ObjectFile.WRITE('                                                                                     //TempDate := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     //"' +  Field.FieldName + '" := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                     VALIDATE("' +  Field.FieldName + '",TempDate);');
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('');
+            END;
+          Type::Option :
+            BEGIN
+              BuildArray(Field.OptionString,OptionStringArray);
+              ObjectFile.WRITE('                                                                                   CASE V' + RemChar(Field.FieldName) + ' OF');
+              FOR i := 1 TO STRLEN(Field.OptionString) - (STRLEN(DELCHR(Field.OptionString,'=',',')) - 1) DO BEGIN
+                ObjectFile.WRITE('                                                                                     ''' + OptionStringArray[i] + ''' : "' + Field.FieldName + '" := "' + Field.FieldName + '"::"' + OptionStringArray[i] + '";');
+
+              END;
+              ObjectFile.WRITE('                                                                                   END;');
+              ObjectFile.WRITE('                                                                                   VALIDATE("' +  Field.FieldName + '");');
+              ObjectFile.WRITE('');
+            END;
+          Type::BLOB :
+            BEGIN
+              ObjectFile.WRITE('                                                                                   //"' +  Field.FieldName + '"  := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                   //');
+              ObjectFile.WRITE('');
+            END;
+        END;
+      END ELSE BEGIN
+              //Flowfields/Flowfilters
+              ObjectFile.WRITE('                                                                                   //' + FORMAT(Field.Class) + ');');
+              ObjectFile.WRITE('                                                                                   //"' +  Field.FieldName + '"  := V' + RemChar(Field.FieldName) + ';');
+              ObjectFile.WRITE('                                                                                   //');
+              ObjectFile.WRITE('');
+      END;
+    END;
+
+    PROCEDURE WriteXMLPortObjEnd@1240060004(vTableNo@1240060001 : Integer;VAR Field@1240060000 : Record 2000000041);
+    BEGIN
+      IF XMLPortType = XMLPortType::Text THEN BEGIN
+        ObjectFile.WRITE('');
+        //ObjectFile.WRITE('                                                                                  ' + RemChar(Field.TableName) + '.MODIFY;');
+        ObjectFile.WRITE('                                                                                   MODIFY;');
+        ObjectFile.WRITE('                                                                                 END;');
+        ObjectFile.WRITE('');
+        ObjectFile.WRITE('                                                                                 ResetVar();');
+        ObjectFile.WRITE('');
+        ObjectFile.WRITE('                                                                                 CurrXMLport.SKIP;');
+        ObjectFile.WRITE('');
+        ObjectFile.WRITE('                                                                               END;');
+        ObjectFile.WRITE('                                                                                }');
+        ObjectFile.WRITE('');
+
+        CLEAR(Field);
+        Field.SETRANGE(TableNo,vTableNo);
+        IF Field.FINDSET THEN BEGIN
+          REPEAT
+            ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];2 ;' + 'V' + RemChar(Field.FieldName) + '       ;Element ;Text   ;');
+            ObjectFile.WRITE('                                                  DataType=' + FORMAT(Field.Type) + '}');
+            ObjectFile.WRITE('');
+          UNTIL Field.NEXT = 0;
+        END;
+      END;
+
+      ObjectFile.WRITE('  }');
+      ObjectFile.WRITE('  EVENTS');
+      ObjectFile.WRITE('  {');
+      ObjectFile.WRITE('  }');
+      ObjectFile.WRITE('  REQUESTPAGE');
+      ObjectFile.WRITE('  {');
+      ObjectFile.WRITE('    PROPERTIES');
+      ObjectFile.WRITE('    {');
+      ObjectFile.WRITE('    }');
+      ObjectFile.WRITE('    CONTROLS');
+      ObjectFile.WRITE('    {');
+      ObjectFile.WRITE('    }');
+      ObjectFile.WRITE('  }');
+      ObjectFile.WRITE('  CODE');
+      ObjectFile.WRITE('  {');
+
+      IF XMLPortType = XMLPortType::Text THEN BEGIN
+        ObjectFile.WRITE('    VAR');
+        ObjectFile.WRITE('      ' + RemChar(TableName) + '@1240060000 : Record ' + FORMAT(TableNo) + ';');
+        ObjectFile.WRITE('       TempDecimal@1240060001 : Decimal;');
+        ObjectFile.WRITE('       TempInteger@1240060002 : Integer;');
+        ObjectFile.WRITE('       TempDate@1240060003 : Date;');
+        ObjectFile.WRITE('       TempTime@1240060004 : DateTime;');
+        ObjectFile.WRITE('       TempBoolean@1240060005 : Boolean;');
+        ObjectFile.WRITE('       TempDateFormula@1240060006 : DateFormula;');
+        ObjectFile.WRITE('');
+        ObjectFile.WRITE('    PROCEDURE ResetVar@1240060200();');
+        ObjectFile.WRITE('    BEGIN');
+        ObjectFile.WRITE('');
+
+        CLEAR(Field);
+        Field.SETRANGE(TableNo,vTableNo);
+        IF Field.FINDSET THEN BEGIN
+          REPEAT
+            ObjectFile.WRITE('      V' + RemChar(Field.FieldName) + ' := '''';');
+          UNTIL Field.NEXT = 0;
+        END;
+        ObjectFile.WRITE('    END;');
+      END;
+
+      ObjectFile.WRITE('');
+      ObjectFile.WRITE('    BEGIN');
+      ObjectFile.WRITE('    {');
+      ObjectFile.WRITE('      '); // <--  COMMENTS GO HERE --> //
+      ObjectFile.WRITE('    }');
+      ObjectFile.WRITE('    END.');
+      ObjectFile.WRITE('  }');
+      ObjectFile.WRITE('}');
+    END;
+
+    PROCEDURE WriteXMLPortObjVariables@1240060009(Field@1240060000 : Record 2000000041);
+    BEGIN
+      ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];2 ;' + 'V' + RemChar(Field.FieldName) + '       ;Element ;Text   ;');
+      ObjectFile.WRITE('                                                  DataType=' + FORMAT(Field.Type) + '}');
+      ObjectFile.WRITE('');
+    END;
+
+    PROCEDURE StartFile@1240060005();
+    BEGIN
+      CLEAR(ObjectFile);
+      NSTFileName := FileMgmt.ServerTempFileName('txt');
+      ObjectFile.TEXTMODE(TRUE);
+      ObjectFile.WRITEMODE(TRUE);
+      ObjectFile.CREATE(NSTFileName);
+
+      FileOpen := TRUE;
+    END;
+
+    PROCEDURE EndFile@1240060006(ExportFilePath@1240060000 : Text;ExportFileName@1240060001 : Text);
+    BEGIN
+      ClientFileName := ExportFilePath + ExportFileName;
+
+      ObjectFile.CLOSE;
+      TempClientFileName := FileMgmt.ClientTempFileName('txt');
+      FileMgmt.DownloadToFile(NSTFileName,TempClientFileName);
+      FileMgmt.MoveFile(TempClientFileName,ClientFileName);
+
+      FileOpen := FALSE;
+    END;
+
+    PROCEDURE RemChar@1240060007(InputString@1240060000 : Text) : Text;
+    BEGIN
+      //Remove Characters
+      EXIT(DELCHR(InputString,'=',' ./()-_!@#$%^&*<>?|\[]+='));
+    END;
+
+    PROCEDURE BuildArray@1240060011(InputString@1240060000 : Text;VAR OutputArray@1240060001 : ARRAY [1000] OF Text);
+    VAR
+      i@1240060002 : Integer;
+    BEGIN
+      FOR i := 1 TO ARRAYLEN(OutputArray) DO BEGIN
+         OutputArray[i] := '';
+      END;
+
+      i := 0;
+      WHILE STRLEN(InputString) > 0 DO BEGIN
+        i := i + 1;
+        IF STRPOS(InputString,',') <> 0 THEN BEGIN
+          OutputArray[i] := COPYSTR(InputString,1,STRPOS(InputString,',') - 1);
+          InputString := COPYSTR(InputString,STRPOS(InputString,',') + 1, STRLEN(InputString));
+        END ELSE BEGIN
+          OutputArray[i] := InputString;
+          InputString := '';
+        END;
+      END;
+    END;
+
+    BEGIN
+    {
+      AP00001 WW 01/01/15 : XMLPort Generator Created
+    }
+    END.
+  }
+}
