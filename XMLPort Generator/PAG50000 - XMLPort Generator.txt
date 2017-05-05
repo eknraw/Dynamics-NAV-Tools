@@ -1,10 +1,9 @@
-
 OBJECT Page 50000 XMLPort Generator
 {
   OBJECT-PROPERTIES
   {
-    Date=03/11/15;
-    Time=11:34:23 PM;
+    Date=04/27/17;
+    Time=11:43:30 AM;
     Modified=Yes;
     Version List=AP7.10.001;
   }
@@ -174,7 +173,6 @@ OBJECT Page 50000 XMLPort Generator
 
           StartingObjectID += 1;
 
-
         UNTIL TempFieldTables.NEXT = 0;
 
         IF NOT SplitObjectFiles THEN
@@ -232,7 +230,7 @@ OBJECT Page 50000 XMLPort Generator
 
       IF XMLPortType = XMLPortType::Field THEN BEGIN
         ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];1 ;' + RemChar(TableName) + '   ;Element ;Table   ;');
-        ObjectFile.WRITE('                                                  SourceTable=Table' + Field.TableName +' }');
+        ObjectFile.WRITE('                                                  SourceTable=Table ' + FORMAT(Field.TableName) +' }');
       END;
 
       IF XMLPortType = XMLPortType::Text THEN BEGIN
@@ -250,7 +248,7 @@ OBJECT Page 50000 XMLPort Generator
         END;
         ObjectFile.WRITE('                                                                                   IF NOT GET THEN BEGIN');
         ObjectFile.WRITE('                                                                                     INSERT;');
-        ObjectFile.WRITE('                                                                                   END');
+        ObjectFile.WRITE('                                                                                   END;');
 
       END;
 
@@ -259,7 +257,7 @@ OBJECT Page 50000 XMLPort Generator
 
     PROCEDURE WriteXMLPortObjLineField@1240060003(Field@1240060000 : Record 2000000041);
     BEGIN
-      ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];2 ;' + 'V' + RemChar(Field.FieldName) + '       ;Element ;Field   ;');
+      ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];2 ;' + 'V' + RemChar(Field.FieldName) + '       ;Attribute ;Field   ;');
       ObjectFile.WRITE('                                                  DataType=' + FORMAT(Field.Type) + ';');
       ObjectFile.WRITE('                                                  SourceField=' + Field.TableName + '::' + Field.FieldName + '}');
       ObjectFile.WRITE('');
