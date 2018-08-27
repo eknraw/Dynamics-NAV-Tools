@@ -230,7 +230,7 @@ OBJECT Page 50000 XMLPort Generator
 
       IF XMLPortType = XMLPortType::Field THEN BEGIN
         ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];1 ;' + RemChar(TableName) + '   ;Element ;Table   ;');
-        ObjectFile.WRITE('                                                  SourceTable=Table ' + FORMAT(Field.TableName) +' }');
+        ObjectFile.WRITE('                                                  SourceTable=Table' + FORMAT(Field.TableNo) +' }');
       END;
 
       IF XMLPortType = XMLPortType::Text THEN BEGIN
@@ -257,7 +257,7 @@ OBJECT Page 50000 XMLPort Generator
 
     PROCEDURE WriteXMLPortObjLineField@1240060003(Field@1240060000 : Record 2000000041);
     BEGIN
-      ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];2 ;' + 'V' + RemChar(Field.FieldName) + '       ;Attribute ;Field   ;');
+      ObjectFile.WRITE('    { [' + FORMAT(CREATEGUID) + '];2 ;' + 'V' + RemChar(Field.FieldName) + '       ;Element ;Field   ;');
       ObjectFile.WRITE('                                                  DataType=' + FORMAT(Field.Type) + ';');
       ObjectFile.WRITE('                                                  SourceField=' + Field.TableName + '::' + Field.FieldName + '}');
       ObjectFile.WRITE('');
