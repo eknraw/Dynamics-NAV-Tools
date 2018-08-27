@@ -416,7 +416,8 @@ OBJECT Page 50000 XMLPort Generator
         ObjectFile.WRITE('       TempDecimal@1240060001 : Decimal;');
         ObjectFile.WRITE('       TempInteger@1240060002 : Integer;');
         ObjectFile.WRITE('       TempDate@1240060003 : Date;');
-        ObjectFile.WRITE('       TempTime@1240060004 : DateTime;');
+        ObjectFile.WRITE('       TempTime@1240060007 : Time;');
+        ObjectFile.WRITE('       TempDateTime@1240060004 : DateTime;');
         ObjectFile.WRITE('       TempBoolean@1240060005 : Boolean;');
         ObjectFile.WRITE('       TempDateFormula@1240060006 : DateFormula;');
         ObjectFile.WRITE('');
