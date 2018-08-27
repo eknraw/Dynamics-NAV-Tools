@@ -3,7 +3,7 @@ OBJECT Page 79999 XMLPort Generator
   OBJECT-PROPERTIES
   {
     Date=08/27/18;
-    Time=11:15:44 AM;
+    Time=11:40:24 AM;
     Modified=Yes;
     Version List=AP7.10.002;
   }
@@ -54,7 +54,7 @@ OBJECT Page 79999 XMLPort Generator
                 SourceExpr=StartingObjectID }
 
     { 1240060025;2;Field  ;
-                CaptionML=ENU=XMLPort Field/Variable;
+                CaptionML=ENU=XMLPort Field/Text;
                 SourceExpr=XMLPortType }
 
     { 1240060018;2;Field  ;
